@@ -1,0 +1,19 @@
+meta {
+  name: Delete XML product
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/products/{{xmlProductId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{writeToken}}
+}
+
+tests {
+  test("204 No Content", () => expect(res.getStatus()).to.equal(204));
+}

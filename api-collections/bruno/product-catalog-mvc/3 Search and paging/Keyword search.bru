@@ -1,0 +1,20 @@
+meta {
+  name: Keyword search
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products?q=BOTTLE&sort=name
+  body: none
+  auth: none
+}
+
+tests {
+  const items = res.getBody().items;
+  test("HTTP 200", () => expect(res.getStatus()).to.equal(200));
+  test("every hit mentions the keyword", () => items.forEach(i =>
+    expect([i.name, i.sku, i.description || ""].join(" ").toLowerCase()).to.contain("bottle")));
+  test("sorted by name", () => { const n = items.map(i => i.name); expect(n).to.deep.equal([...n].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))); });
+  test("default size 20", () => expect(res.getBody().size).to.equal(20));
+}

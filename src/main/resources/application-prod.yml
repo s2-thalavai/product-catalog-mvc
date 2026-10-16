@@ -1,0 +1,21 @@
+# Production hardening, combined with "postgres": SPRING_PROFILES_ACTIVE=postgres,prod
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI}     # e.g. https://login.microsoftonline.com/<tenant>/v2.0 or Keycloak realm URL
+
+springdoc:
+  swagger-ui:
+    enabled: false        # checklist: Swagger UI disabled in production (spec is exported in CI)
+  api-docs:
+    enabled: false
+
+catalog:
+  seed-data: false
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  security:
+    jwt:
+      hmac-secret: ""     # no shared-secret tokens in production

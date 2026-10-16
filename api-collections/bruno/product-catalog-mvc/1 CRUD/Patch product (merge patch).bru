@@ -1,0 +1,28 @@
+meta {
+  name: Patch product (merge patch)
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/products/{{productId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{writeToken}}
+  Content-Type: application/merge-patch+json
+  If-Match: {{etag}}
+}
+
+body:json {
+  { "stock": 0, "category": "" }
+}
+
+tests {
+  test("HTTP 200", () => expect(res.getStatus()).to.equal(200));
+  test("stock changed", () => expect(res.getBody().stock).to.equal(0));
+  test("other fields kept", () => expect(res.getBody().name).to.equal("Bruno Desk Lamp v2"));
+  test("empty string clears category", () => expect(res.getBody()).to.not.have.property("category"));
+}

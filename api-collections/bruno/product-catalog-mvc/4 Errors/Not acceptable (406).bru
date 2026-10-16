@@ -1,0 +1,23 @@
+meta {
+  name: Not acceptable (406)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: image/png
+}
+
+tests {
+  test("HTTP 406", () => expect(res.getStatus()).to.equal(406));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode NOT_ACCEPTABLE", () => expect(res.getBody().errorCode).to.equal("NOT_ACCEPTABLE"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(406));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+}

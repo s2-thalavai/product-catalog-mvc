@@ -1,0 +1,45 @@
+# Local stack: PostgreSQL + the REST API.
+#   docker compose up -d --build
+#   curl http://localhost:8080/api/v1/products
+#   docker compose down -v        # also deletes the database volume
+name: product-catalog-mvc
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_DB: catalog
+      POSTGRES_USER: catalog
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-catalog-dev-only}
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catalog -d catalog"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    image: product-catalog-mvc:local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      DB_URL: jdbc:postgresql://postgres:5432/catalog
+      DB_USERNAME: catalog
+      DB_PASSWORD: ${DB_PASSWORD:-catalog-dev-only}
+      SEED_DATA: "true"
+      LOG_LEVEL: INFO
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      # Local-only HS256 secret for dev tokens (scripts/dev-token.sh uses the same default)
+      JWT_HMAC_SECRET: ${JWT_HMAC_SECRET:-local-dev-only-secret-change-me-0123456789}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    stop_grace_period: 30s
+
+volumes:
+  pgdata:

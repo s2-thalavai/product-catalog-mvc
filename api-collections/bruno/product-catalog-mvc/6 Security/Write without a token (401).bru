@@ -1,0 +1,24 @@
+meta {
+  name: Write without a token (401)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/products
+  body: json
+  auth: none
+}
+
+body:json {
+  { "sku": "BRUNO-NOAUTH", "name": "No token", "price": 1, "stock": 1 }
+}
+
+tests {
+  test("HTTP 401", () => expect(res.getStatus()).to.equal(401));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode UNAUTHORIZED", () => expect(res.getBody().errorCode).to.equal("UNAUTHORIZED"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(401));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+  test("WWW-Authenticate: Bearer", () => expect(res.getHeader("www-authenticate")).to.match(/^Bearer/));
+}

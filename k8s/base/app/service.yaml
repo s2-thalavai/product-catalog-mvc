@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-catalog-mvc
+  labels:
+    app.kubernetes.io/name: product-catalog-mvc
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: product-catalog-mvc
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

@@ -1,0 +1,43 @@
+meta {
+  name: Create product from XML
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/products
+  body: xml
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{writeToken}}
+  Accept: application/xml
+}
+
+body:xml {
+  <product>
+    <sku>{{xmlSku}}</sku>
+    <name>Bruno XML Kettle</name>
+    <category>Bruno</category>
+    <price>1499.00</price>
+    <stock>3</stock>
+  </product>
+}
+
+script:pre-request {
+  bru.setVar("xmlSku", "BRUNO-XML-" + Date.now());
+}
+
+script:post-response {
+  const tag = (n) => (String(res.getBody()).match(new RegExp('<' + n + '>([^<]*)</' + n + '>')) || [])[1];
+  const id = tag("id");
+  if (id) bru.setVar("xmlProductId", id);
+}
+
+tests {
+  const tag = (n) => (String(res.getBody()).match(new RegExp('<' + n + '>([^<]*)</' + n + '>')) || [])[1];
+  test("201 Created", () => expect(res.getStatus()).to.equal(201));
+  test("XML response", () => expect(res.getHeader("content-type")).to.contain("application/xml"));
+  test("price kept", () => expect(tag("price")).to.equal("1499.00"));
+}

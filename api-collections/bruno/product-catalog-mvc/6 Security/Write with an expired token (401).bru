@@ -1,0 +1,28 @@
+meta {
+  name: Write with an expired token (401)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/products
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{expiredToken}}
+}
+
+body:json {
+  { "sku": "BRUNO-EXPIRED", "name": "Expired", "price": 1, "stock": 1 }
+}
+
+tests {
+  test("HTTP 401", () => expect(res.getStatus()).to.equal(401));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode UNAUTHORIZED", () => expect(res.getBody().errorCode).to.equal("UNAUTHORIZED"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(401));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+  test("invalid_token", () => expect(res.getHeader("www-authenticate")).to.contain("invalid_token"));
+}

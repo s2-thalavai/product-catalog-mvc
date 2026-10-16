@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Products')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main th:with="items=${page.items()}">
+
+    <div class="card">
+        <form class="search" method="get" th:action="${nav.listPath()}">
+            <label>Keyword <input type="text" name="q" th:value="${nav.q()}"></label>
+            <label>Category <input type="text" name="category" th:value="${nav.category()}"></label>
+            <label>Min price <input type="number" name="minPrice" min="0" step="any" th:value="${nav.minPrice()}"></label>
+            <label>Max price <input type="number" name="maxPrice" min="0" step="any" th:value="${nav.maxPrice()}"></label>
+            <label>Sort
+                <select name="sort">
+                    <option th:each="option : ${nav.sortOptions()}"
+                            th:value="${option[0]}" th:text="${option[1]}"
+                            th:selected="${option[0] == nav.sort()}">Id</option>
+                </select>
+            </label>
+            <label>Per page <input type="number" name="size" min="1" max="100" th:value="${nav.size()}"></label>
+            <label>In stock <input type="checkbox" name="inStock" value="true" th:checked="${nav.inStock()}"></label>
+            <button type="submit">Search</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <p class="muted">
+            <span th:text="${page.totalElements()} + ' product(s)'">0 product(s)</span>
+            <span th:if="${page.totalPages() > 0}"
+                  th:text="' - page ' + (${page.page()} + 1) + ' of ' + ${page.totalPages()}"></span>
+        </p>
+
+        <p th:if="${items.isEmpty()}">No products match these filters.</p>
+
+        <table th:unless="${items.isEmpty()}">
+            <thead>
+            <tr><th class="num">Id</th><th>SKU</th><th>Name</th><th>Category</th><th class="num">Price</th><th class="num">Stock</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="p : ${items}">
+                <td class="num" th:text="${p.id()}">1</td>
+                <td th:text="${p.sku()}">SKU</td>
+                <td><a th:href="${nav.listPath()} + '/' + ${p.id()}" th:text="${p.name()}">Name</a></td>
+                <td th:text="${p.category()}">Category</td>
+                <td class="num" th:text="${p.price().toPlainString()}">0.00</td>
+                <td class="num" th:classappend="${p.stock() == 0} ? 'out'" th:text="${p.stock()}">0</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <nav class="pager" th:if="${page.totalPages() > 1}">
+            <a th:if="${nav.firstUrl() != null}" th:href="${nav.firstUrl()}">&laquo; First</a>
+            <a th:if="${nav.prevUrl() != null}" th:href="${nav.prevUrl()}">&lsaquo; Prev</a>
+            <span th:text="'Page ' + (${page.page()} + 1) + ' of ' + ${page.totalPages()}">Page 1 of 1</span>
+            <a th:if="${nav.nextUrl() != null}" th:href="${nav.nextUrl()}">Next &rsaquo;</a>
+            <a th:if="${nav.lastUrl() != null}" th:href="${nav.lastUrl()}">Last &raquo;</a>
+        </nav>
+    </div>
+
+    <p class="formats muted">Also as:
+        <a th:href="${nav.jsonUrl()}">JSON</a>
+        <a th:href="${nav.xmlUrl()}">XML</a>
+        <a th:href="${nav.textUrl()}">TEXT</a>
+        <a href="/swagger-ui.html">API docs</a>
+    </p>
+</main>
+</body>
+</html>

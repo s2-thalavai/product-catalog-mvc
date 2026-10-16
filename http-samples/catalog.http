@@ -1,0 +1,84 @@
+### Product Catalog API (Spring MVC) - IntelliJ HTTP Client / VS Code REST Client
+# Writes need a token: run `make token` (or scripts/dev-token.sh) and paste it below.
+@baseUrl = http://localhost:8080
+@token = PASTE_OUTPUT_OF_scripts/dev-token.sh
+
+### List (JSON, page 0, 5 per page)
+GET {{baseUrl}}/api/v1/products?size=5
+Accept: application/json
+
+### Search: electronics 1000-9000 in stock, most expensive first
+GET {{baseUrl}}/api/v1/products?category=electronics&minPrice=1000&maxPrice=9000&inStock=true&sort=price,desc&size=3
+Accept: application/json
+
+### Keyword search as plain text (?format overrides Accept)
+GET {{baseUrl}}/api/v1/products?q=bottle&format=text
+
+### Same list as XML
+GET {{baseUrl}}/api/v1/products?size=2
+Accept: application/xml
+
+### Same list as HTML (open the URL in a browser too)
+GET {{baseUrl}}/api/v1/products?size=2
+Accept: text/html
+
+### One product (note the ETag, e.g. "1-0")
+GET {{baseUrl}}/api/v1/products/1
+Accept: application/json
+
+### Conditional GET -> 304 when unchanged
+GET {{baseUrl}}/api/v1/products/1
+If-None-Match: "1-0"
+
+### Create (JSON) -> 201 + Location + ETag
+POST {{baseUrl}}/api/v1/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sku": "FIT-KBEL-01", "name": "Kettlebell 8 kg", "category": "Fitness", "price": 1899.00, "stock": 25 }
+
+### Create (XML)
+POST {{baseUrl}}/api/v1/products
+Authorization: Bearer {{token}}
+Content-Type: application/xml
+Accept: application/xml
+
+<product><sku>FIT-KBEL-02</sku><name>Kettlebell 12 kg</name><price>2499.00</price><stock>10</stock></product>
+
+### Replace (PUT) with optimistic locking - use the ETag you read
+PUT {{baseUrl}}/api/v1/products/26
+Authorization: Bearer {{token}}
+Content-Type: application/json
+If-Match: "26-0"
+
+{ "sku": "FIT-KBEL-01", "name": "Kettlebell 8 kg (cast iron)", "category": "Fitness", "price": 1999.00, "stock": 20 }
+
+### Partial update (JSON merge patch); "" clears category
+PATCH {{baseUrl}}/api/v1/products/26
+Authorization: Bearer {{token}}
+Content-Type: application/merge-patch+json
+
+{ "stock": 0, "category": "" }
+
+### Delete -> 204
+DELETE {{baseUrl}}/api/v1/products/26
+Authorization: Bearer {{token}}
+
+### Errors: validation (400), no token (401)
+POST {{baseUrl}}/api/v1/products
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "sku": "x", "name": "", "price": -1, "stock": -5 }
+
+###
+POST {{baseUrl}}/api/v1/products
+Content-Type: application/json
+
+{ "sku": "NO-TOKEN-01", "name": "No token", "price": 1, "stock": 1 }
+
+### OpenAPI (group v1) and health
+GET {{baseUrl}}/v3/api-docs/v1
+
+###
+GET {{baseUrl}}/actuator/health/readiness

@@ -1,0 +1,16 @@
+meta {
+  name: Page size is capped
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products?size=5000
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", () => expect(res.getStatus()).to.equal(200));
+  test("capped at max-page-size (100)", () => expect(res.getBody().size).to.equal(100));
+}

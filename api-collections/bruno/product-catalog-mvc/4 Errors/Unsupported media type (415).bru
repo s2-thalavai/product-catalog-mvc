@@ -1,0 +1,28 @@
+meta {
+  name: Unsupported media type (415)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/products
+  body: text
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{writeToken}}
+  Content-Type: text/csv
+}
+
+body:text {
+  sku,name
+}
+
+tests {
+  test("HTTP 415", () => expect(res.getStatus()).to.equal(415));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode UNSUPPORTED_MEDIA_TYPE", () => expect(res.getBody().errorCode).to.equal("UNSUPPORTED_MEDIA_TYPE"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(415));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+}

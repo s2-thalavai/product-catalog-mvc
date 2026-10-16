@@ -1,0 +1,48 @@
+# Jenkins Configuration as Code. ${VAR} values come from the container environment (.env).
+jenkins:
+  systemMessage: "Product Catalog REST API CI - local lab"
+  numExecutors: 2
+  mode: NORMAL
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_USER}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: "http://localhost:8092/"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          # Written by infra/k3d/create-cluster.sh; mounted read-only into the container.
+          - file:
+              scope: GLOBAL
+              id: "kubeconfig-k3s"
+              description: "kubeconfig for the local k3d/k3s cluster"
+              fileName: "kubeconfig"
+              secretBytes: "${readFileBase64:/run/secrets/jenkins/kubeconfig-k3s}"
+
+jobs:
+  - script: |
+      pipelineJob('product-catalog-mvc') {
+        description('Spring MVC product catalog REST API: build, test, image, deploy to k3s')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('${GIT_REPO_URL}') }
+                branch('${GIT_BRANCH}')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+      }

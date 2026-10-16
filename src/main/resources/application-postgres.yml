@@ -1,0 +1,13 @@
+# Real database: Docker Compose and Kubernetes. Credentials come from environment variables / Secrets.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/catalog}
+    username: ${DB_USERNAME:catalog}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      connection-timeout: 3000
+      initialization-fail-timeout: 60000   # wait for PostgreSQL at startup (k8s start order)
+
+catalog:
+  seed-data: ${SEED_DATA:false}

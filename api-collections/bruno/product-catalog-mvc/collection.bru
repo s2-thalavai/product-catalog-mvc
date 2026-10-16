@@ -1,0 +1,33 @@
+headers {
+  X-Correlation-Id: bruno-run
+}
+
+script:pre-request {
+  // Mints short-lived HS256 dev tokens before every request (local / k3s only; prod uses a real issuer).
+  // writeToken has scope catalog.write; readToken is authenticated without it (-> 403 on writes).
+  const CryptoJS = require("crypto-js");
+  const secret = bru.getEnvVar("jwtSecret");
+  const b64url = (words) => CryptoJS.enc.Base64.stringify(words).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const part = (obj) => b64url(CryptoJS.enc.Utf8.parse(JSON.stringify(obj)));
+  const sign = (claims) => {
+    const unsigned = part({ alg: "HS256", typ: "JWT" }) + "." + part(claims);
+    return unsigned + "." + b64url(CryptoJS.HmacSHA256(unsigned, secret));
+  };
+  const now = Math.floor(Date.now() / 1000);
+  bru.setVar("writeToken", sign({ sub: "bruno", scope: "catalog.write", iat: now, exp: now + 300 }));
+  bru.setVar("readToken", sign({ sub: "bruno-reader", iat: now, exp: now + 300 }));
+  bru.setVar("expiredToken", sign({ sub: "bruno", scope: "catalog.write", iat: now - 7200, exp: now - 3600 }));
+}
+
+docs {
+  Product Catalog REST API (Spring Boot / Spring MVC) - every endpoint, every representation, with tests.
+
+  Writes need a bearer token with scope catalog.write. The collection pre-request script mints
+  HS256 dev tokens from the environment variable jwtSecret (must equal the server's JWT_HMAC_SECRET):
+  {{writeToken}}, {{readToken}} (no scope) and {{expiredToken}}.
+
+  Run in order with the Collection Runner (or `bru run --env local`). Folder "1 CRUD" chains requests:
+  "Create product" stores {{sku}}, {{productId}} and {{etag}} for the following steps.
+  Search tests assume demo data (SEED_DATA=true) but assert rules, not exact rows.
+  CORS tests expect CORS_ALLOWED_ORIGINS to contain {{origin}}.
+}

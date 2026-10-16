@@ -1,0 +1,31 @@
+meta {
+  name: Validation errors
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/products
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{writeToken}}
+}
+
+body:json {
+  { "sku": "x", "name": "", "price": -1, "stock": -5 }
+}
+
+tests {
+  test("HTTP 400", () => expect(res.getStatus()).to.equal(400));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode VALIDATION_FAILED", () => expect(res.getBody().errorCode).to.equal("VALIDATION_FAILED"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(400));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+  test("every violation listed, sorted", () => expect(res.getBody().errors).to.deep.equal([
+    "name is required", "price must be >= 0", "sku must be 3-32 characters of A-Z, 0-9 or '-'", "stock must be >= 0"]));
+  test("name is required", () => expect(res.getBody().errors).to.include("name is required"));
+  test("documented problem type", () => expect(res.getBody().type).to.equal("https://catalog.infy.com/problems/validation-failed"));
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Product as text
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products/1
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: text/plain
+}
+
+tests {
+  test("HTTP 200", () => expect(res.getStatus()).to.equal(200));
+  test("text/plain", () => expect(res.getHeader("content-type")).to.contain("text/plain"));
+  test("readable", () => expect(res.getBody()).to.match(/^Product 1\n/));
+}

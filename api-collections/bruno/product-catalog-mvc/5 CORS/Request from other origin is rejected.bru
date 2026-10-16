@@ -1,0 +1,20 @@
+meta {
+  name: Request from other origin is rejected
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products?size=1
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: https://evil.example.com
+}
+
+tests {
+  test("403 Invalid CORS request (Spring rejects unknown origins)", () => expect(res.getStatus()).to.equal(403));
+  test("no Access-Control-Allow-Origin", () => expect(res.getHeader("access-control-allow-origin")).to.be.undefined);
+}

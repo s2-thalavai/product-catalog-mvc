@@ -1,0 +1,33 @@
+meta {
+  name: Patch with stale ETag (412)
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/products/{{productId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{writeToken}}
+  Content-Type: application/merge-patch+json
+  If-Match: "stale-version"
+}
+
+body:json {
+  { "stock": 0 }
+}
+
+tests {
+  test("HTTP 412", () => expect(res.getStatus()).to.equal(412));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode PRECONDITION_FAILED", () => expect(res.getBody().errorCode).to.equal("PRECONDITION_FAILED"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(412));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+}
+
+docs {
+  Optimistic locking: somebody else changed the product since you read it. Backed by JPA @Version.
+}

@@ -1,0 +1,20 @@
+meta {
+  name: List as text via format param
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products?size=5&format=text
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+tests {
+  test("?format overrides Accept", () => expect(res.getHeader("content-type")).to.contain("text/plain"));
+  test("table header", () => expect(res.getBody()).to.match(/^ID\s+SKU\s+NAME/));
+}

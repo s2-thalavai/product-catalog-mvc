@@ -1,0 +1,18 @@
+meta {
+  name: Page past the end
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products?page=999&size=10
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", () => expect(res.getStatus()).to.equal(200));
+  test("no items", () => expect(res.getBody().items).to.have.length(0));
+  test("no next page", () => expect(res.getBody().hasNext).to.equal(false));
+  test("prev link back to the last real page", () => expect(String(res.getHeader("link"))).to.contain('rel="prev"'));
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Unknown sort field (400)
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products?sort=colour
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 400", () => expect(res.getStatus()).to.equal(400));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode VALIDATION_FAILED", () => expect(res.getBody().errorCode).to.equal("VALIDATION_FAILED"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(400));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+  test("whitelist named", () => expect(res.getBody().errors[0]).to.contain("id, name, price, stock, createdAt"));
+  test("no entity internals leaked", () => expect(JSON.stringify(res.getBody())).to.not.contain("PropertyReferenceException"));
+}

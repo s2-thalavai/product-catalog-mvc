@@ -1,0 +1,51 @@
+# Production template: app only, managed PostgreSQL, NGINX ingress with TLS, more replicas.
+# Before first use, replace every CHANGE_ME and create the secrets listed in HOW_TO_RUN.md
+# (they are deliberately NOT generated here so no credentials live in Git).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: catalog-mvc
+
+resources:
+  - ../../base/app
+  - ingress.yaml
+
+configMapGenerator:
+  - name: product-catalog-mvc-config
+    behavior: merge
+    literals:
+      - DB_URL=jdbc:postgresql://CHANGE_ME.postgres.database.azure.com:5432/catalog?sslmode=require
+      - SPRING_PROFILES_ACTIVE=postgres,prod
+      - JWT_ISSUER_URI=https://login.microsoftonline.com/CHANGE_ME_TENANT_ID/v2.0
+      - DB_POOL_SIZE=15
+      - SEED_DATA=false
+      - LOG_LEVEL=INFO
+      - CORS_ALLOWED_ORIGINS=https://CHANGE_ME.example.com
+
+# The pipeline sets newTag (and newName if you use another registry).
+images:
+  - name: product-catalog-mvc
+    newName: CHANGE_ME.azurecr.io/product-catalog-mvc
+    newTag: CHANGE_ME
+
+patches:
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: product-catalog-mvc
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 10
+  - target:
+      kind: Deployment
+      name: product-catalog-mvc
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+      - op: replace
+        path: /spec/template/spec/topologySpreadConstraints/0/whenUnsatisfiable
+        value: DoNotSchedule

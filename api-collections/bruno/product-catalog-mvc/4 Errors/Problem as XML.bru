@@ -1,0 +1,21 @@
+meta {
+  name: Problem as XML
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products/987654321
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/xml
+}
+
+tests {
+  test("HTTP 404", () => expect(res.getStatus()).to.equal(404));
+  test("application/problem+xml", () => expect(res.getHeader("content-type")).to.contain("application/problem+xml"));
+  test("RFC 9457 namespace", () => expect(res.getBody()).to.contain("urn:ietf:rfc:7807"));
+}

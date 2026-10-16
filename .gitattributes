@@ -1,0 +1,7 @@
+* text=auto
+# Shell scripts must keep LF endings or they fail with "bad interpreter" (Windows checkouts).
+*.sh        text eol=lf
+Jenkinsfile text eol=lf
+Makefile    text eol=lf
+*.yaml      text eol=lf
+*.yml       text eol=lf

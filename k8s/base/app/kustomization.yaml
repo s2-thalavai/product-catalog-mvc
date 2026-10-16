@@ -1,0 +1,35 @@
+# The REST API (Spring Boot / Spring MVC). Environment-neutral: overlays set the namespace, image, secrets and ingress.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: product-catalog-mvc
+    includeSelectors: false
+
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - hpa.yaml
+  - pdb.yaml
+
+# Generated with a content hash: changing a value rolls the pods automatically.
+configMapGenerator:
+  - name: product-catalog-mvc-config
+    literals:
+      - APP_PORT=8080
+      - SPRING_PROFILES_ACTIVE=postgres
+      - DB_URL=jdbc:postgresql://product-catalog-mvc-postgres:5432/catalog
+      # Comma-separated browser origins allowed to call the API (empty = CORS off)
+      - CORS_ALLOWED_ORIGINS=
+      - DB_POOL_SIZE=10
+      - SEED_DATA=false
+      - HTTP_THREADS=100
+      - SHUTDOWN_GRACE_SECONDS=20
+      - LOG_LEVEL=INFO
+      - JAVA_OPTS=-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError
+
+images:
+  - name: product-catalog-mvc
+    newTag: latest

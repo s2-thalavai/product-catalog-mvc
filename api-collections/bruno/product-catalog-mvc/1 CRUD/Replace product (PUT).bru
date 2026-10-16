@@ -1,0 +1,42 @@
+meta {
+  name: Replace product (PUT)
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/products/{{productId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{writeToken}}
+  If-Match: {{etag}}
+}
+
+body:json {
+  {
+    "sku": "{{sku}}",
+    "name": "Bruno Desk Lamp v2",
+    "category": "Bruno",
+    "price": 999,
+    "stock": 4
+  }
+}
+
+script:pre-request {
+  bru.setVar("previousEtag", bru.getVar("etag"));
+}
+
+script:post-response {
+  bru.setVar("etag", res.getHeader("etag"));
+}
+
+tests {
+  test("HTTP 200", () => expect(res.getStatus()).to.equal(200));
+  test("name replaced", () => expect(res.getBody().name).to.equal("Bruno Desk Lamp v2"));
+  test("description removed (full replace)", () => expect(res.getBody()).to.not.have.property("description"));
+  test("new ETag after the update", () => expect(res.getHeader("etag")).to.not.equal(bru.getVar("previousEtag")));
+  test("version incremented", () => expect(res.getHeader("etag")).to.equal('"' + bru.getVar("productId") + '-1"'));
+}

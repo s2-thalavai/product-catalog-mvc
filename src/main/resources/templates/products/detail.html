@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head(${product.name()})}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main>
+    <p><a th:href="${listPath}">&larr; All products</a></p>
+    <div class="card">
+        <h2 th:text="${product.name()}">Product</h2>
+        <dl>
+            <dt>Id</dt><dd th:text="${product.id()}">1</dd>
+            <dt>SKU</dt><dd th:text="${product.sku()}">SKU</dd>
+            <dt>Description</dt><dd th:text="${product.description()}"></dd>
+            <dt>Category</dt><dd th:text="${product.category()}"></dd>
+            <dt>Price</dt><dd th:text="${product.price().toPlainString()}">0.00</dd>
+            <dt>Stock</dt><dd th:text="${product.stock()}">0</dd>
+            <dt>Created</dt><dd th:text="${product.createdAt()}"></dd>
+            <dt>Updated</dt><dd th:text="${product.updatedAt()}"></dd>
+        </dl>
+    </div>
+    <p class="formats muted">Also as:
+        <a th:href="${listPath} + '/' + ${product.id()} + '?format=json'">JSON</a>
+        <a th:href="${listPath} + '/' + ${product.id()} + '?format=xml'">XML</a>
+        <a th:href="${listPath} + '/' + ${product.id()} + '?format=text'">TEXT</a>
+    </p>
+</main>
+</body>
+</html>

@@ -1,0 +1,93 @@
+# Defaults = zero-setup local run: in-memory H2 (PostgreSQL mode), demo data, Swagger UI, dev JWT secret.
+# Profiles: "postgres" (real database: Docker Compose, k8s), "prod" (production hardening). See HOW_TO_RUN.md.
+spring:
+  application:
+    name: product-catalog-mvc
+  datasource:
+    url: jdbc:h2:mem:catalog;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # Flyway owns the schema
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    locations: classpath:db/migration
+  jackson:                         # checklist: ISO dates in UTC, tolerant reader, no float money
+    time-zone: UTC
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+      use-big-decimal-for-floats: true
+    generator:
+      write-bigdecimal-as-plain: true
+  mvc:
+    contentnegotiation:            # ?format=json|xml|html|text in addition to the Accept header
+      favor-parameter: true
+      parameter-name: format
+      media-types:
+        json: application/json
+        xml: application/xml
+        html: text/html
+        text: text/plain
+        txt: text/plain
+  data:
+    web:
+      pageable:
+        default-page-size: 20
+        max-page-size: 100         # larger requests are capped, never rejected
+  thymeleaf:
+    check-template-location: false
+  lifecycle:
+    timeout-per-shutdown-phase: ${SHUTDOWN_GRACE_SECONDS:20}s
+
+server:
+  port: ${APP_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework   # correct Location/Link URLs behind the ingress
+  error:
+    include-stacktrace: never
+    include-message: never
+  tomcat:
+    threads:
+      max: ${HTTP_THREADS:200}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true             # /actuator/health/liveness and /readiness
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+  default-produces-media-type: application/json
+
+logging:
+  pattern:
+    level: "%5p traceId=%X{traceId:-}"
+  level:
+    com.infy.catalog: ${LOG_LEVEL:INFO}
+
+catalog:
+  seed-data: ${SEED_DATA:true}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  security:
+    jwt:
+      # DEV ONLY. Override with JWT_HMAC_SECRET; production uses an identity provider (prod profile).
+      hmac-secret: ${JWT_HMAC_SECRET:local-dev-only-secret-change-me-0123456789}

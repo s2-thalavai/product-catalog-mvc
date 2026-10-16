@@ -1,0 +1,24 @@
+meta {
+  name: Method not allowed (405)
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/products
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{writeToken}}
+}
+
+tests {
+  test("HTTP 405", () => expect(res.getStatus()).to.equal(405));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode METHOD_NOT_ALLOWED", () => expect(res.getBody().errorCode).to.equal("METHOD_NOT_ALLOWED"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(405));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+  test("Allow header lists the methods", () => expect(res.getHeader("allow")).to.contain("GET"));
+}

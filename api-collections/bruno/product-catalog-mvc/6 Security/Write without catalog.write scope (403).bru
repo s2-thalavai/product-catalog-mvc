@@ -1,0 +1,24 @@
+meta {
+  name: Write without catalog.write scope (403)
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/products/1
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{readToken}}
+}
+
+tests {
+  test("HTTP 403", () => expect(res.getStatus()).to.equal(403));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode FORBIDDEN", () => expect(res.getBody().errorCode).to.equal("FORBIDDEN"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(403));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+  test("product 1 untouched", () => expect(res.getBody().instance).to.equal("/api/v1/products/1"));
+}

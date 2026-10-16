@@ -1,0 +1,26 @@
+meta {
+  name: List first page
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products?size=10
+  body: none
+  auth: none
+}
+
+tests {
+  const b = res.getBody();
+  test("HTTP 200", () => expect(res.getStatus()).to.equal(200));
+  test("page 0, size 10", () => { expect(b.page).to.equal(0); expect(b.size).to.equal(10); });
+  test("at most 10 items", () => expect(b.items.length).to.be.at.most(10));
+  test("X-Total-Count matches body", () => expect(Number(res.getHeader("x-total-count"))).to.equal(b.totalElements));
+  test("totalPages consistent", () => expect(b.totalPages).to.equal(Math.ceil(b.totalElements / 10)));
+  test("Link header has first and last", () => {
+    const link = String(res.getHeader("link"));
+    expect(link).to.contain('rel="first"');
+    expect(link).to.contain('rel="last"');
+  });
+  test("sorted by id", () => { const ids = b.items.map(i => i.id); expect(ids).to.deep.equal([...ids].sort((x, y) => x - y)); });
+}

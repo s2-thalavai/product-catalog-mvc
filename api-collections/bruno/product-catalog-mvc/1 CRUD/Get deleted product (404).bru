@@ -1,0 +1,20 @@
+meta {
+  name: Get deleted product (404)
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products/{{productId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 404", () => expect(res.getStatus()).to.equal(404));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode PRODUCT_NOT_FOUND", () => expect(res.getBody().errorCode).to.equal("PRODUCT_NOT_FOUND"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(404));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+  test("instance is the request path", () => expect(res.getBody().instance).to.equal("/api/v1/products/" + bru.getVar("productId")));
+}

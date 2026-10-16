@@ -1,0 +1,41 @@
+# k3s ships Traefik as its ingress controller.
+# k3d (see infra/k3d/create-cluster.sh) maps the load balancer's port 80 to localhost:8081:
+#   curl -H 'Host: catalog-mvc.localhost' http://localhost:8081/api/v1/products
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: product-catalog-mvc
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: catalog-mvc.localhost
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: product-catalog-mvc
+                port:
+                  name: http
+          - path: /v3/api-docs
+            pathType: Prefix
+            backend:
+              service:
+                name: product-catalog-mvc
+                port:
+                  name: http
+          - path: /swagger-ui.html
+            pathType: Exact
+            backend:
+              service:
+                name: product-catalog-mvc
+                port:
+                  name: http
+          - path: /swagger-ui
+            pathType: Prefix
+            backend:
+              service:
+                name: product-catalog-mvc
+                port:
+                  name: http

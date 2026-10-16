@@ -1,0 +1,21 @@
+meta {
+  name: Correlation id is echoed
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products/987654321
+  body: none
+  auth: none
+}
+
+headers {
+  X-Correlation-Id: bruno-trace-123
+}
+
+tests {
+  test("HTTP 404", () => expect(res.getStatus()).to.equal(404));
+  test("response header echoes it", () => expect(res.getHeader("x-correlation-id")).to.equal("bruno-trace-123"));
+  test("used as traceId", () => expect(res.getBody().traceId).to.equal("bruno-trace-123"));
+}

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-catalog-mvc-postgres
+  labels:
+    app.kubernetes.io/name: product-catalog-mvc-postgres
+spec:
+  clusterIP: None   # headless: stable DNS for the StatefulSet pod
+  selector:
+    app.kubernetes.io/name: product-catalog-mvc-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

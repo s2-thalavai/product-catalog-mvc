@@ -1,0 +1,26 @@
+meta {
+  name: Preflight from allowed origin
+  type: http
+  seq: 1
+}
+
+options {
+  url: {{baseUrl}}/api/v1/products
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{origin}}
+  Access-Control-Request-Method: PATCH
+  Access-Control-Request-Headers: Authorization, Content-Type, If-Match
+}
+
+tests {
+  test("preflight succeeds", () => expect(res.getStatus()).to.be.below(300));
+  test("origin echoed (no wildcard)", () => expect(res.getHeader("access-control-allow-origin")).to.equal(bru.getEnvVar("origin")));
+  test("PATCH allowed", () => expect(res.getHeader("access-control-allow-methods")).to.contain("PATCH"));
+  test("If-Match allowed", () => expect(res.getHeader("access-control-allow-headers")).to.contain("If-Match"));
+  test("Authorization allowed", () => expect(res.getHeader("access-control-allow-headers")).to.contain("Authorization"));
+  test("no credentials (bearer tokens, not cookies)", () => expect(res.getHeader("access-control-allow-credentials")).to.be.undefined);
+}

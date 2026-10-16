@@ -1,0 +1,23 @@
+meta {
+  name: Get product if changed (304)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products/{{productId}}
+  body: none
+  auth: none
+}
+
+headers {
+  If-None-Match: {{etag}}
+}
+
+tests {
+  test("304 Not Modified", () => expect(res.getStatus()).to.equal(304));
+}
+
+docs {
+  Conditional GET: the client already has this version, so the server sends no body.
+}

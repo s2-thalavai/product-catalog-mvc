@@ -1,0 +1,16 @@
+target/
+*.class
+*.log
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Local secrets - never commit
+infra/jenkins/.env
+infra/jenkins/secrets/*
+!infra/jenkins/secrets/.gitkeep
+
+# Written by the pipeline
+rendered-manifests.yaml
+port-forward.log

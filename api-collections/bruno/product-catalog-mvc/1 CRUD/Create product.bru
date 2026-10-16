@@ -1,0 +1,45 @@
+meta {
+  name: Create product
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/products
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{writeToken}}
+}
+
+body:json {
+  {
+    "sku": "{{sku}}",
+    "name": "Bruno Desk Lamp",
+    "description": "Created by the Bruno collection",
+    "category": "Bruno",
+    "price": 1299.5,
+    "stock": 10
+  }
+}
+
+script:pre-request {
+  bru.setVar("sku", "BRUNO-" + Date.now());
+}
+
+script:post-response {
+  bru.setVar("productId", res.getBody().id);
+  bru.setVar("etag", res.getHeader("etag"));
+}
+
+tests {
+  test("201 Created", () => expect(res.getStatus()).to.equal(201));
+  test("Location points to the new product", () => expect(res.getHeader("location")).to.match(/\/api\/v1\/products\/\d+$/));
+  test("ETag returned", () => expect(res.getHeader("etag")).to.be.a("string").and.not.be.empty);
+  test("SKU stored", () => expect(res.getBody().sku).to.equal(bru.getVar("sku")));
+  test("ETag is \"id-version\" (version 0)", () => expect(res.getHeader("etag")).to.equal('"' + res.getBody().id + '-0"'));
+  test("price normalized to 2 decimals", () => expect(res.getBody().price).to.equal(1299.5));
+  test("ISO-8601 timestamps", () => expect(res.getBody().createdAt).to.match(/^\d{4}-\d{2}-\d{2}T.*Z$/));
+}

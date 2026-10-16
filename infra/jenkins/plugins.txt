@@ -1,0 +1,11 @@
+# Installed at image build time by jenkins-plugin-cli (latest compatible versions).
+# Pin versions (plugin:1.2.3) once your setup is stable.
+configuration-as-code
+job-dsl
+workflow-aggregator
+pipeline-stage-view
+git
+credentials-binding
+timestamper
+junit
+coverage

@@ -1,0 +1,14 @@
+target/
+.git/
+.idea/
+.vscode/
+*.iml
+k8s/
+infra/
+http-samples/
+api-collections/
+scripts/
+*.md
+Jenkinsfile
+Makefile
+docker-compose.yml

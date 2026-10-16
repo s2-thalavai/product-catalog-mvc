@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "Product Catalog (Spring MVC)",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

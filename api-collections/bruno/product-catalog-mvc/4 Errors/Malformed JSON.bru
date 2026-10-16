@@ -1,0 +1,33 @@
+meta {
+  name: Malformed JSON
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/products
+  body: text
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{writeToken}}
+  Content-Type: application/json
+}
+
+body:text {
+  { "sku":
+}
+
+tests {
+  test("HTTP 400", () => expect(res.getStatus()).to.equal(400));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode MALFORMED_REQUEST", () => expect(res.getBody().errorCode).to.equal("MALFORMED_REQUEST"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(400));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+  test("no Java internals leaked", () => {
+    const body = JSON.stringify(res.getBody());
+    expect(body).to.not.contain("com.fasterxml");
+    expect(body).to.not.contain("Exception");
+  });
+}

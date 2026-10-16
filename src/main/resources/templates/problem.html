@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head(${problem.status()} + ' ' + ${problem.title()})}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main>
+    <div class="card problem">
+        <h2 th:text="${problem.status()} + ' ' + ${problem.title()}">404 Not Found</h2>
+        <p th:if="${problem.detail() != null}" th:text="${problem.detail()}">Detail</p>
+        <ul th:unless="${problem.errors().isEmpty()}">
+            <li th:each="error : ${problem.errors()}" th:text="${error}">error</li>
+        </ul>
+        <p class="muted">
+            errorCode: <span th:text="${problem.errorCode()}">CODE</span> &middot;
+            traceId: <span th:text="${problem.traceId()}">trace</span>
+        </p>
+    </div>
+</main>
+</body>
+</html>

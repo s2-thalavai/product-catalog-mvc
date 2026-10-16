@@ -1,0 +1,21 @@
+meta {
+  name: OpenAPI document (group v1)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/v3/api-docs/v1
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", () => expect(res.getStatus()).to.equal(200));
+  test("OpenAPI 3", () => expect(res.getBody().openapi).to.match(/^3\./));
+  test("bearer security scheme documented", () => expect(res.getBody().components.securitySchemes).to.have.property("bearer-jwt"));
+  test("documents the product paths", () => {
+    expect(res.getBody().paths).to.have.property("/api/v1/products");
+    expect(res.getBody().paths).to.have.property("/api/v1/products/{id}");
+  });
+}

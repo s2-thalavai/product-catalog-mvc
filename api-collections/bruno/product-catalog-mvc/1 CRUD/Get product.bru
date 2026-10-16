@@ -1,0 +1,18 @@
+meta {
+  name: Get product
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products/{{productId}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", () => expect(res.getStatus()).to.equal(200));
+  test("same product", () => expect(res.getBody().sku).to.equal(bru.getVar("sku")));
+  test("same ETag as on create", () => expect(res.getHeader("etag")).to.equal(bru.getVar("etag")));
+  test("must revalidate", () => expect(res.getHeader("cache-control")).to.contain("no-cache"));
+}

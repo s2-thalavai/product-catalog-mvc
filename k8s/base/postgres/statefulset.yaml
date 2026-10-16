@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: product-catalog-mvc-postgres
+  labels:
+    app.kubernetes.io/name: product-catalog-mvc-postgres
+    app.kubernetes.io/component: database
+spec:
+  serviceName: product-catalog-mvc-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: product-catalog-mvc-postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: product-catalog-mvc-postgres
+        app.kubernetes.io/component: database
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        # uid/gid 70 = "postgres" in the alpine image
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:16.4-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: catalog
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: product-catalog-mvc-db
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: product-catalog-mvc-db
+                  key: password
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d catalog -h 127.0.0.1"]
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d catalog -h 127.0.0.1"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: run
+              mountPath: /var/run/postgresql
+      volumes:
+        - name: run
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # No storageClassName: uses the cluster default (local-path on k3s).
+        resources:
+          requests:
+            storage: 1Gi

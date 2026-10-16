@@ -1,0 +1,19 @@
+meta {
+  name: Read without a token is public
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products?size=1
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", () => expect(res.getStatus()).to.equal(200));
+}
+
+docs {
+  GET and HEAD are public; POST, PUT, PATCH and DELETE need scope catalog.write.
+}

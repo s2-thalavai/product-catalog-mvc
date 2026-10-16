@@ -1,0 +1,25 @@
+meta {
+  name: Filter, sort and page
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/products?category=electronics&minPrice=1000&maxPrice=9000&inStock=true&sort=price,desc&size=3
+  body: none
+  auth: none
+}
+
+tests {
+  const items = res.getBody().items;
+  const prices = items.map(i => i.price);
+  test("HTTP 200", () => expect(res.getStatus()).to.equal(200));
+  test("at most 3 items", () => expect(items.length).to.be.at.most(3));
+  test("category matched case-insensitively", () => items.forEach(i => expect(i.category).to.equal("Electronics")));
+  test("price within range", () => prices.forEach(p => expect(p).to.be.within(1000, 9000)));
+  test("in stock only", () => items.forEach(i => expect(i.stock).to.be.above(0)));
+  test("price descending", () => expect(prices).to.deep.equal([...prices].sort((a, b) => b - a)));
+  test("next link when more pages", () => {
+    if (res.getBody().hasNext) expect(String(res.getHeader("link"))).to.contain('rel="next"');
+  });
+}

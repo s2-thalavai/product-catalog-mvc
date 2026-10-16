@@ -1,0 +1,27 @@
+meta {
+  name: Create duplicate SKU (409)
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/products
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{writeToken}}
+}
+
+body:json {
+  { "sku": "{{sku}}", "name": "Duplicate", "price": 1, "stock": 1 }
+}
+
+tests {
+  test("HTTP 409", () => expect(res.getStatus()).to.equal(409));
+  test("RFC 9457 problem+json", () => expect(res.getHeader("content-type")).to.contain("application/problem+json"));
+  test("errorCode DUPLICATE_SKU", () => expect(res.getBody().errorCode).to.equal("DUPLICATE_SKU"));
+  test("status member matches", () => expect(res.getBody().status).to.equal(409));
+  test("has traceId", () => expect(res.getBody().traceId).to.be.a("string").and.not.be.empty);
+}

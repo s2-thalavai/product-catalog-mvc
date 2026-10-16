@@ -1,0 +1,28 @@
+# Local Jenkins for the pipeline in ../../Jenkinsfile.
+#   cp .env.example .env   # then edit it
+#   ./start-jenkins.sh     # (creates the cluster kubeconfig check + network wiring)
+name: catalog-mvc-ci
+
+services:
+  jenkins:
+    build: .
+    image: catalog-mvc-jenkins:local
+    container_name: catalog-mvc-jenkins
+    # LOCAL LAB ONLY: root lets the pipeline use the host Docker socket for image builds
+    # and Testcontainers. Use dedicated build agents in a shared/production Jenkins.
+    user: root
+    restart: unless-stopped
+    ports:
+      - "8092:8080"
+    environment:
+      JENKINS_ADMIN_USER: ${JENKINS_ADMIN_USER:-admin}
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:?Set JENKINS_ADMIN_PASSWORD in infra/jenkins/.env}
+      GIT_REPO_URL: ${GIT_REPO_URL:?Set GIT_REPO_URL in infra/jenkins/.env}
+      GIT_BRANCH: ${GIT_BRANCH:-main}
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./secrets:/run/secrets/jenkins:ro
+
+volumes:
+  jenkins_home:
