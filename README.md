@@ -1,12 +1,6 @@
 # Product Catalog – REST API (Spring MVC)
 
-![Java 21](https://img.shields.io/badge/Java-21-orange)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-6DB33F)
-![Formats](https://img.shields.io/badge/formats-JSON%20%7C%20XML%20%7C%20HTML%20%7C%20text-6f42c1)
-![Security](https://img.shields.io/badge/auth-OAuth2%20JWT-black)
-![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-336791)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-k3s%20%7C%20k3d-326CE5)
-![Jenkins](https://img.shields.io/badge/CI-Jenkins-D24939)
+**Java 21 · Spring Boot 3.3 · Spring MVC · Spring Data JPA · Spring Security (JWT) · PostgreSQL 16 · Docker · k3s · Jenkins**
 
 A production-style **REST API** for a product catalog: CRUD, keyword search, filtering, sorting and pagination,
 built with **Spring Boot 3 / Spring MVC**, Spring Data JPA and Spring Security.
@@ -19,23 +13,37 @@ built with **Spring Boot 3 / Spring MVC**, Spring Data JPA and Spring Security.
 It is the Spring twin of `product-catalog-rs` (JAX-RS) and `product-catalog-ws` (SOAP): same catalog, same API
 contract, so the three styles can be compared side by side.
 
+**At a glance**
+
+| | |
+|---|---|
+| Endpoints | 6 on `/api/v1/products` (list/search, get, create, replace, patch, delete) |
+| Formats | JSON (default) · XML · HTML · plain text, for data **and** errors |
+| Auth | reads public · writes need a JWT with scope `catalog.write` |
+| Database | H2 in-memory locally (zero setup) · PostgreSQL 16 everywhere else |
+| Run it | `mvn spring-boot:run` → http://localhost:8080 |
+| Tests | unit · `@WebMvcTest` · `@SpringBootTest` · Testcontainers · OpenAPI contract · Bruno · smoke |
+| Deploy | Docker Compose · k3d/k3s · Jenkins pipeline with automatic rollback |
+
 ---
 
 ## Contents
 
 1. [Try it in 60 seconds](#try-it-in-60-seconds)
-2. [Architecture](#architecture)
-3. [API reference](#api-reference)
-4. [Security](#security)
-5. [Content negotiation](#content-negotiation)
-6. [Errors](#errors)
-7. [Testing](#testing)
-8. [Deployment](#deployment)
-9. [Configuration](#configuration)
-10. [SOAP vs JAX-RS vs Spring MVC](#soap-vs-jax-rs-vs-spring-mvc)
-11. [Design decisions](#design-decisions)
-12. [Project layout](#project-layout)
-13. [Tech stack and roadmap](#tech-stack)
+2. [Architecture](#architecture) — deployment, one request step by step
+3. [Spring concepts → where to look](#spring-concepts--where-to-look)
+4. [API reference](#api-reference)
+5. [Security](#security)
+6. [Content negotiation](#content-negotiation)
+7. [Errors](#errors)
+8. [Testing](#testing)
+9. [Deployment](#deployment)
+10. [Configuration](#configuration)
+11. [Extending the API](#extending-the-api)
+12. [SOAP vs JAX-RS vs Spring MVC](#soap-vs-jax-rs-vs-spring-mvc)
+13. [Design decisions](#design-decisions)
+14. [Project layout](#project-layout)
+15. [Tech stack and roadmap](#tech-stack)
 
 ---
 
@@ -84,32 +92,47 @@ Run the `.sh` scripts (token, smoke test) from Git Bash or WSL2.
           prod: tokens issued by your identity provider (JWT_ISSUER_URI) · dev/k3s: HS256 dev secret
 ```
 
-**Inside a pod: one request**
+**Inside a pod: one request, step by step**
 
 ```
  HTTP request
      │
      ▼
- CorrelationIdFilter ─ traceId in MDC, echoed as X-Correlation-Id
+ 1. CorrelationIdFilter    traceId into the log MDC, echoed as X-Correlation-Id
      │
      ▼
- Spring Security ─ CORS ─ JWT (resource server) ─ GET public / writes need SCOPE_catalog.write
-     │                                   │ 401 / 403
-     ▼                                   ▼
- DispatcherServlet                  ProblemAuthenticationHandlers ──┐
-     │ content negotiation (Accept or ?format=)                     │
-     ▼                                                              │
- ProductController ──► ProductService ──► Spring Data JPA ──► DB    │
-     │ @Valid DTO records       │ @Transactional, @Version          │
-     │                    domain exception                          │
-     │                          ▼                                   ▼
-     │                    GlobalExceptionHandler ──► RFC 9457 ProblemDetail
-     ▼                          │
- HttpMessageConverter ◄─────────┘  Jackson JSON · Jackson XML · HTML (Thymeleaf) · text
+ 2. Spring Security        CORS, JWT check, scope rules ────── 401 / 403 ───────┐
+     │                                                                          │
+     ▼                                                                          │
+ 3. DispatcherServlet      route + choose the format (Accept or ?format=)       │
+     │                                                                          │
+     ▼                                                                          │
+ 4. ProductController      bind + @Valid, If-Match / If-None-Match ── 400 ──────┤
+     │                                                                          │
+     ▼                                                                          │
+ 5. ProductService         @Transactional rules, JPA, @Version ── 404/409/412 ──┤
+     │                                                                          ▼
+     │ DTO record                                   6. GlobalExceptionHandler
+     │                                                 → RFC 9457 ProblemDetail
+     ▼                                                                          │
+ 7. HttpMessageConverter   JSON · XML · HTML · text ◄───────────────────────────┘
      │
      ▼
- HTTP response (+ ETag, Link, X-Total-Count, CSP, Cache-Control)
+ HTTP response             + ETag, Link, X-Total-Count, Cache-Control, CSP
 ```
+
+1. **CorrelationIdFilter** runs first, so even rejected requests have a `traceId` in logs and in the error body.
+2. **Spring Security** runs before Spring MVC. A failure never reaches a controller; `ProblemAuthenticationHandlers`
+   hands it to the same `GlobalExceptionHandler`, so 401/403 look like every other error. (One exception: a
+   disallowed `Origin` gets Spring's plain `403 Invalid CORS request`, before any handler runs.)
+3. **DispatcherServlet** matches the URL and method, and agrees on a response format before calling the controller
+   (unsupported `Accept` → 406, unsupported `Content-Type` → 415).
+4. **ProductController** is thin: it binds the request into a DTO record, validates it, handles conditional headers
+   and builds the `ResponseEntity`. No business logic.
+5. **ProductService** owns the transaction and the rules (normalization, duplicate SKU, version check). JPA's
+   `@Version` makes the update atomic.
+6. **GlobalExceptionHandler** (one `@RestControllerAdvice`) turns any exception into a `ProblemDetail`.
+7. **HttpMessageConverter** writes the DTO or the problem in the negotiated format.
 
 | Layer | Package | Knows about HTTP? | Spring pieces |
 |---|---|---|---|
@@ -117,6 +140,33 @@ Run the `.sh` scripts (token, smoke test) from Git Bash or WSL2.
 | Business rules | `product.service` | no | `@Service`, `@Transactional`, Specifications |
 | Model | `product.domain` | no | JPA entity, records, exceptions |
 | Wiring | `config` | – | Security, CORS, springdoc, Flyway, `@ConfigurationProperties` |
+
+---
+
+## Spring concepts → where to look
+
+A reading guide for the Spring REST course: each concept, and the file in this project that shows it.
+
+| Concept | Where | What to notice |
+|---|---|---|
+| `@RestController`, `@RequestMapping`, `ResponseEntity` | `product/web/ProductController` | status codes and headers set explicitly; `produces` lists 4 formats |
+| Request binding | `ProductController`, `dto/ProductSearchParams` | query params bound into a record with `@ParameterObject` |
+| Bean Validation (`@Valid`, `@NotBlank`, `@AssertTrue`) | `dto/ProductRequest`, `dto/ProductSearchParams` | messages written for clients; cross-field rule as `@AssertTrue` |
+| DTOs as records | `product/web/dto/*`, `ProductMapper` | entities never serialized |
+| Content negotiation | `application.yml` (`spring.mvc.contentnegotiation`), `WebConfig` | `?format=` + Accept; custom `HttpMessageConverter`s |
+| Global error handling, `ProblemDetail` | `common/error/GlobalExceptionHandler` | extends `ResponseEntityExceptionHandler`; adds `errorCode`, `traceId` |
+| Conditional requests | `ProductController`, `web/Etags` | `WebRequest.checkNotModified` → 304; `If-Match` → 412 |
+| Pagination and sorting | `ProductController`, `common/web/PaginationLinks`, `web/SortRules` | `Pageable` + `@PageableDefault`; sort whitelist; `Link` header |
+| Spring Data JPA, `Specification` | `product/service/ProductRepository`, `ProductSpecifications` | dynamic filters without string-built SQL |
+| Transactions, optimistic locking | `product/service/ProductService`, `domain/Product` | `@Transactional(readOnly = true)` default; `@Version` |
+| Flyway | `db/migration`, `db/seed`, `config/FlywaySeedConfig` | schema vs demo data in separate locations |
+| Typed configuration, profiles | `config/CatalogProperties`, `application-*.yml` | `@ConfigurationProperties` record validated at startup |
+| Spring Security resource server | `config/SecurityConfig` | `SecurityFilterChain`, scope-based rules, JWT decoder per profile |
+| CORS | `config/WebConfig` | one `CorsConfigurationSource`, explicit origins |
+| Servlet filter | `common/web/CorrelationIdFilter` | `OncePerRequestFilter`, MDC |
+| OpenAPI | `config/OpenApiConfig` | springdoc group per API version |
+| Actuator, graceful shutdown | `application.yml` | liveness/readiness probes for Kubernetes |
+| Testing pyramid | `src/test/java` | `@WebMvcTest` + `jwt()`, `@SpringBootTest`, `@ServiceConnection` |
 
 ---
 
@@ -178,10 +228,14 @@ More ready-to-run requests: `http-samples/catalog.http` (IntelliJ / VS Code) and
 
 ## Security
 
+**Who can call what**
+
 | Request | Needs | Without it |
 |---|---|---|
 | `GET`, `HEAD`, `OPTIONS` | nothing | – |
 | `POST`, `PUT`, `PATCH`, `DELETE` | `Authorization: Bearer <JWT>` with scope `catalog.write` | **401** (missing/invalid/expired) · **403** (no scope) |
+
+**How tokens are checked**
 
 | Environment | Token validation | Where tokens come from |
 |---|---|---|
@@ -189,9 +243,18 @@ More ready-to-run requests: `http-samples/catalog.http` (IntelliJ / VS Code) and
 | k3s / k3d | HS256, Secret `product-catalog-mvc-jwt` | same, with the k3s secret |
 | Production (`prod` profile) | signature + issuer from `JWT_ISSUER_URI` (JWKS) | your identity provider (Entra ID, Keycloak, Auth0…) |
 
-Also: stateless (no session, no CSRF tokens needed), CORS with explicit origins and no credentials,
-a script-free Content-Security-Policy on every response except Swagger UI, and 401/403 returned as RFC 9457
-problems with a `WWW-Authenticate: Bearer` header.
+```text
+$ curl -si -X DELETE localhost:8080/api/v1/products/1
+HTTP/1.1 401
+WWW-Authenticate: Bearer
+Content-Type: application/problem+json
+
+{"type":"https://catalog.infy.com/problems/unauthorized","title":"Unauthorized","status":401,
+ "instance":"/api/v1/products/1","errorCode":"UNAUTHORIZED","traceId":"…", …}
+```
+
+Also: stateless (no session, so no CSRF tokens needed), CORS with explicit origins and no credentials, and a
+script-free Content-Security-Policy on every response except Swagger UI.
 
 ---
 
@@ -311,11 +374,15 @@ It can share the k3d cluster with the other two projects: its own namespace (`ca
 
 Spring profiles pick the environment; environment variables (a ConfigMap in Kubernetes) fill in the values.
 
+**Profiles**
+
 | Profile | Database | Security | Docs |
 |---|---|---|---|
 | *(default)* | in-memory H2 (PostgreSQL mode) + demo data | HS256 dev secret | Swagger UI on |
 | `postgres` | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | HS256 (`JWT_HMAC_SECRET`) | Swagger UI on |
 | `postgres,prod` | same | issuer (`JWT_ISSUER_URI`), no shared secret | Swagger UI and api-docs off |
+
+**Most used variables**
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -326,6 +393,28 @@ Spring profiles pick the environment; environment variables (a ConfigMap in Kube
 | `APP_PORT` | `8080` | HTTP port |
 
 Full list: [HOW_TO_RUN.md → Configuration reference](HOW_TO_RUN.md#configuration-reference).
+
+---
+
+## Extending the API
+
+**Add a field (e.g. `brand`)**
+
+1. New migration `V2__add_product_brand.sql` (never edit `V1`); keep it valid on PostgreSQL **and** H2.
+2. `Product` entity + `ProductData`/`ProductPatch`; bounded validation in `ProductRequest` and `ProductPatchRequest`.
+3. `ProductResponse` + `ProductMapper`; the text and HTML views if it should show there.
+4. Tests: `ProductServiceTest`, `ProductControllerTest`; then `./scripts/update-contract.sh` (a new optional field is
+   a compatible change) and commit the new baseline.
+
+**Add an endpoint**
+
+1. Controller method with explicit status codes, `@Operation` and the problem responses documented.
+2. A rule in `SecurityConfig` (anything unmatched requires authentication, so it fails closed).
+3. Domain exception for business failures, mapped once in `GlobalExceptionHandler`.
+4. `@WebMvcTest` cases for success, validation, 401/403 and 404; a Bruno request; update the contract baseline.
+
+**Breaking change?** Don't change `/api/v1`. Add `/api/v2` controllers and a second springdoc group, and run both
+versions until clients have moved.
 
 ---
 
@@ -415,4 +504,3 @@ Contributing or using Claude Code? Read **[CLAUDE.md](CLAUDE.md)**: layering rul
 - [ ] Full-text search (`pg_trgm`) for large catalogs
 - [ ] HATEOAS links (Spring HATEOAS) and an `/api/v2` with its own springdoc group
 - [ ] Spring WebFlux version of the same API
-# product-catalog-mvc
